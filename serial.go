@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"time"
+	"strings"
 )
 
 // End of line character (AKA EOL), newline character (ASCII 10, CR, '\n'). is used by default.
@@ -218,6 +219,7 @@ func (sp *SerialPort) WaitForRegexTimeout(exp string, timeout time.Duration) (st
 		go func() {
 			sp.log("INF >> Waiting for RegExp: \"%s\"", exp)
 			result := []string{}
+			multiline := []string{}
 			for !timeExpired {
 				line, err := sp.ReadLine()
 				if err != nil {
@@ -227,8 +229,18 @@ func (sp *SerialPort) WaitForRegexTimeout(exp string, timeout time.Duration) (st
 					if len(result) > 0 {
 						c1 <- result[0]
 						break
+					} else {
+						// add line to check for multiline response
+						multiline = append(multiline, line)
+						result = regExpPatttern.FindAllString(strings.Join(multiline[:],"\n"), -1)
+						if len(result) > 0 {
+							c1 <- result[0]
+							break
+						}
 					}
 				}
+				// might be more to read.. wait
+				time.Sleep(100 * time.Millisecond)
 			}
 		}()
 		select {
