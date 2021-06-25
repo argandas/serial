@@ -9,6 +9,8 @@ import (
 	"os"
 	"regexp"
 	"time"
+	"strings"
+	"unicode"
 )
 
 // End of line character (AKA EOL), newline character (ASCII 10, CR, '\n'). is used by default.
@@ -204,20 +206,19 @@ func (sp *SerialPort) ReadLine() (string, error) {
 	return "", nil
 }
 
+
 // Wait for a defined regular expression for a defined amount of time.
 func (sp *SerialPort) WaitForRegexTimeout(exp string, timeout time.Duration) (string, error) {
-
 	if sp.portIsOpen {
 		//Decode received data
 		timeExpired := false
-
 		regExpPatttern := regexp.MustCompile(exp)
-
 		//Timeout structure
 		c1 := make(chan string, 1)
 		go func() {
 			sp.log("INF >> Waiting for RegExp: \"%s\"", exp)
 			result := []string{}
+			multiline := []string{}
 			for !timeExpired {
 				line, err := sp.ReadLine()
 				if err != nil {
@@ -227,8 +228,18 @@ func (sp *SerialPort) WaitForRegexTimeout(exp string, timeout time.Duration) (st
 					if len(result) > 0 {
 						c1 <- result[0]
 						break
+					} else {
+						// add line to check for multiline response
+						multiline = append(multiline, line)
+						result = regExpPatttern.FindAllString(strings.Join(multiline[:],"\n"), -1)
+						if len(result) > 0 {
+							c1 <- result[0]
+							break
+						}
 					}
 				}
+				// might be more to read.. wait
+				time.Sleep(100 * time.Millisecond)
 			}
 		}()
 		select {
@@ -285,7 +296,15 @@ func (sp *SerialPort) processSerialPort() {
 			switch lastRxByte {
 			case sp.eol:
 				// EOL - Print received data
-				sp.log("Rx << %s", string(append(screenBuff, lastRxByte)))
+				screenBuff = append(screenBuff, lastRxByte)
+			        for i, r := range screenBuff{
+					c := rune(r)
+					//if !(unicode.IsPrint(c) && !unicode.IsOneOf("\t\n\r", c)) {
+					if (!unicode.IsPrint(c) && !unicode.IsSpace(c)) {
+						screenBuff[i] = '*'
+					}
+				}
+				sp.log("Rx << %s", screenBuff)
 				screenBuff = make([]byte, 0) //Clean buffer
 				break
 			default:

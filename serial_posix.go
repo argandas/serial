@@ -37,6 +37,32 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 	}
 	var speed C.speed_t
 	switch baud {
+	case 4000000:
+		speed = C.B4000000
+	case 3500000:
+		speed = C.B3500000
+	case 3000000:
+		speed = C.B3000000
+	case 2500000:
+		speed = C.B2500000
+	case 2000000:
+		speed = C.B2000000
+	case 1500000:
+		speed = C.B1500000
+	case 1152000:
+		speed = C.B1152000
+	case 1000000:
+		speed = C.B1000000
+	case 921600:
+		speed = C.B921600
+	case 576000:
+		speed = C.B576000
+	case 500000:
+		speed = C.B500000
+	case 460800:
+		speed = C.B460800
+	case 230400:
+		speed = C.B230400
 	case 115200:
 		speed = C.B115200
 	case 57600:
